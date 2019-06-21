@@ -24,7 +24,7 @@ class efficiency(ExplicitComponent):
         v = inputs['v']
         rm = inputs['rm']
         
-        outputs['P_in'] = v*i
+        outputs['P_in'] = (3**.5)*v*i
         outputs['P_out'] = tq*rm*(2*pi/60)
         outputs['nu'] = outputs['P_out']/outputs['P_in']
 
