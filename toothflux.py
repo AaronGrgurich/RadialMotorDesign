@@ -12,10 +12,14 @@ def toothflux(theta, params, phi):
     n_m = params['n_m'] #number of poles
     n_s = params['n_s'] #number of Slots
     l_st = params['l_st'] #axial motor length
-    sta_ir = params['sta_ir'] #stator inner radius
+    r_s = params['sta_ir'] #stator inner radius
     t_mag = params['t_mag'] #magnet thickness
-    rot_or = params['rot_or'] #rotor outer radius (INCLUDING MAGNETS)
+    r_m = params['rot_or'] #rotor outer radius (INCLUDING MAGNETS)
     gap = params['gap'] #air gaps
+    
+    r_r = r_m - gap
+    
+    b_r = 1.3 #magnetic remanence
     
     nterms = 5 #flux fourier series terms
     mterms = 5 #slot correction fourier series terms
@@ -24,6 +28,10 @@ def toothflux(theta, params, phi):
 
     Kslm = np.zeros(mterms + 1)
     Bgn = np.zeros(nterms + 1)
+    
+    mu_r = .001 #magnet relative recoil permeability, aka relative permitivity, mu/mu_0
+    #k_rn = 1
+    #k_tn = 1
     
     phi = 0
     #flux term layer
@@ -38,12 +46,16 @@ def toothflux(theta, params, phi):
             
             Ksl += Kslm[m + mterms]*sin(pi*(m + n*(n_m/(2*n_s))))/(pi*(m + n*(n_m/(2*n_s))))
             
+        k_mc = (k_rn + 1j*beta*k_tn)/(1 - beta**2)
         
+        del_r = (mu_r + 1)*((r_r/r_m)**(2*beta) - (r_s/r_m)**(2*beta)) + (mu_r - 1)*(1 -((r_r/r_m)**(2*beta))*((r_s/r_m)**(2*beta)))
         
-        Bgn[n+nterms] = -br*ka*(((sta_ir/rot_or)**(beta-1)) + ((sta_ir/rot_or)**(2*beta))*((rot_or/sta_ir)**(beta+1)))
+        k_a = (k_mc*k_rn/del_r)*((1-(r_r/r_m)**(2*beta))*((beta + 1)*(r_r/r_m)**(2*beta) - (2*beta)*(r_r/r_m)**(beta+1) + beta - 1))
+        
+        Bgn[n+nterms] = -b_r*k_a*(((r_s/r_m)**(beta-1)) + ((r_s/r_m)**(2*beta))*((r_m/r_s)**(beta+1)))
             
         
-        phi += Bgn[n+nterms]*(2*pi*l_st*sta_ir/n_s)*Ksl*exp(1j*n*theta)
+        phi += Bgn[n+nterms]*(2*pi*l_st*r_s/n_s)*Ksl*exp(1j*n*theta)
         
         
             
