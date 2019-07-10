@@ -6,7 +6,7 @@ Magnetic Flux Density Coefficient formula taken from Appendix B, pg 349
 '''
 import numpy as np
 from math import pi, sin, cos, exp
-
+import matplotlib.pyplot as plt
 
 def toothflux(theta, params, phi):
     n_m = params['n_m'] #number of poles
@@ -16,8 +16,9 @@ def toothflux(theta, params, phi):
     t_mag = params['t_mag'] #magnet thickness
     r_m = params['rot_or'] #rotor outer radius (INCLUDING MAGNETS)
     gap = params['gap'] #air gaps
+    alpha = 1/30 #magnetic fraction, fraction of rotor circumference occupied by one magnet
     
-    r_r = r_m - gap
+    r_r = r_m - t_mag
     
     b_r = 1.3 #magnetic remanence
     
@@ -25,27 +26,45 @@ def toothflux(theta, params, phi):
     mterms = 5 #slot correction fourier series terms
     
     n_p = n_m/2 #number of pole pairs
+    
+    ts = 2*pi/n_s #slot to slot angle
+    tt = #tooth width angle
 
     Kslm = np.zeros(mterms + 1)
     Bgn = np.zeros(nterms + 1)
     
     mu_r = .001 #magnet relative recoil permeability, aka relative permitivity, mu/mu_0
-    #k_rn = 1
-    #k_tn = 1
     
     phi = 0
     #flux term layer
-    for n in range(-nterms, nterms)
+    for n in range(-nterms, nterms):
         beta = n*n_p
         
-        Ksl = 0
+        slotsum = 0
+        
+        ###slot correction factor function, to be used to find 
+        #first determine g(theta)/g
+        #gratio = gfunc(theta, gap, r_s, n_m, tt, ts)
+        
+        Ksl = kfunc(theta, gap, r_s, n_m, tt, ts, mu_r, l_m)
+        
+        #fourier transform to obtain coeffificients in Kslm
+        #compute using Riemann sum
+        
         #slot correction term layer
-        for m in range(-mterms, mterms)
+        for m in range(-mterms, mterms):
             
-            Kslm[m + mterms] = 
+            #Kslm[m + mterms] = 
             
-            Ksl += Kslm[m + mterms]*sin(pi*(m + n*(n_m/(2*n_s))))/(pi*(m + n*(n_m/(2*n_s))))
+            slotsum += Kslm[m + mterms]*sin(pi*(m + n*(n_m/(2*n_s))))/(pi*(m + n*(n_m/(2*n_s))))
             
+        #
+        # add k_rn and k_tn here based on magnetic field orientation of halbach array
+        #
+        ###for now, assume radial orientation
+        k_rn = RadialR(n, alpha)
+        k_tn = RadialT(n, alpha)
+        
         k_mc = (k_rn + 1j*beta*k_tn)/(1 - beta**2)
         
         del_r = (mu_r + 1)*((r_r/r_m)**(2*beta) - (r_s/r_m)**(2*beta)) + (mu_r - 1)*(1 -((r_r/r_m)**(2*beta))*((r_s/r_m)**(2*beta)))
@@ -57,8 +76,60 @@ def toothflux(theta, params, phi):
         
         phi += Bgn[n+nterms]*(2*pi*l_st*r_s/n_s)*Ksl*exp(1j*n*theta)
         
+    
+def kfunc(theta, gap, r_s, n_m, tt, ts, mu_r, t_mag):
+    
+    gratio = gfunc(theta, gap, r_s, n_m, tt, ts)
+    
+    Ksl = (1 + t_mag/(gap*mu_r))/(gratio + t_mag/(gap*mu_r))
+    
+    return Ksl
+
+    
         
-            
+def gfunc(theta, gap, r_s, n_m, tt, ts):
+    
+    if abs(theta) <= tt/2:
+        gratio = 1
+        
+    if theta <= ts/2 and theta >= tt/2:
+        gratio = 1 + pi*r_s*(theta-tt/2)/(n_m*gap)
+        
+    if theta <= -tt/2 and theta >= -ts/2:
+        gratio = 1 - pi*r_s*(theta+tt/2)/(n_m*gap)
     
     
-            
+    return gratio
+    
+def RadialR(n, alpha):
+    
+    if n%2 != 0:
+        return alpha*(sin(n*alpha*pi/2))/(n*alpha*pi/2)
+    
+    if n%2 == 0:
+        return 0
+
+def RadialT(n, alpha):
+    return 0
+
+def FourierCoeffsNumpy(func, T, N):
+    #func: one-dimensional function of interest
+    #T: period of function, will compute from center
+    #N: number of terms 1 and onward, this computes 2*N + 1 coefficients
+    
+    fsample = 2*N 
+    t = np.linspace(-T/2, T/2, fsample + 2)
+    y = np.fft.rfft(func(t))
+    
+
+if name == '__main__'
+
+    gap = .003
+    r_s = .07
+    n_m = 20
+    tt = pi/10
+    ts = 1.1*pi/10
+    mu_r = .001
+    
+    period = ts
+    
