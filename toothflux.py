@@ -95,14 +95,16 @@ def kfunc(theta, gap, r_s, n_m, tt, ts, mu_r, t_mag):
         
 def gfunc(theta, gap, r_s, n_m, tt, ts):
     
-    if abs(theta) <= tt/2:
-        gratio = 1
+    gratio = np.zeros(len(theta))
+    for x in range(0, len(theta)):
+        if abs(theta[x]) <= tt/2:
+            gratio[x] = 1
         
-    if theta <= ts/2 and theta >= tt/2:
-        gratio = 1 + pi*r_s*(theta-tt/2)/(n_m*gap)
+        if theta[x] <= ts/2 and theta[x] >= tt/2:
+            gratio[x] = 1 + pi*r_s*(theta[x]-tt/2)/(n_m*gap)
         
-    if theta <= -tt/2 and theta >= -ts/2:
-        gratio = 1 - pi*r_s*(theta+tt/2)/(n_m*gap)
+        if theta[x] <= -tt/2 and theta[x] >= -ts/2:
+            gratio[x] = 1 - pi*r_s*(theta[x]+tt/2)/(n_m*gap)
     
     
     return gratio
@@ -129,7 +131,7 @@ def FourierCoeffsNumpy(func, T, N,  gap, r_s, n_m, tt, ts, mu_r, t_mag):
     
     c = y
     for k in range(1, N):
-        np.insert(c, 0, np.conj(y(k)))
+        np.insert(c, 0, np.conj(y[k]))
     
     return c
 
@@ -157,7 +159,7 @@ if __name__ == '__main__':
         'l_st':l_st
     }
     
-    theta = ts/2 # np.linspace(-ts,ts)
+    theta = np.linspace(-ts/2,ts/2)
     
     T = ts
     N = 5
@@ -166,3 +168,4 @@ if __name__ == '__main__':
     y = FourierCoeffsNumpy(kfunc, T, N, gap, r_s, n_m, tt, ts, mu_r, t_mag)
     
     print(x)
+    print(y)
