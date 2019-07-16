@@ -17,10 +17,11 @@ def toothflux(theta, nterms, params, Bn):
     r_s = params['sta_ir'] #stator inner radius
     t_mag = params['t_mag'] #magnet thickness
     r_m = params['rot_or'] #rotor outer radius (INCLUDING MAGNETS)
-    gap = params['gap'] #air gaps
+    gap = params['gap'] #air gap
     t_mag = params['t_mag'] #magnet thickness
     tt = params['tt']
     ts = params['ts']
+    mu_r = params['mu_r']
     alpha = 1/30 #magnetic fraction, fraction of rotor circumference occupied by one magnet
     
     r_r = r_m - t_mag
@@ -35,15 +36,15 @@ def toothflux(theta, nterms, params, Bn):
     
 
     Kslm = np.zeros(2*mterms + 1)
-    Bgn = np.zeros(2*nterms + 1)
+    Bgn = np.zeros(2*nterms + 1, dtype=np.complex_)
     phi = np.zeros(2*nterms + 1)
-    Bn = np.zeros(2*nterms + 1)
+    Bn = np.zeros(2*nterms + 1, dtype=np.complex_)
     
-    mu_r = .001 #magnet relative recoil permeability, aka relative permitivity, mu/mu_0
+    #mu_r = .001 #magnet relative recoil permeability, aka relative permitivity, mu/mu_0
     
     phi = 0
     #flux term layer
-    for n in range(-nterms, nterms+1):
+    for n in range(-nterms, nterms + 1):
         beta = n*n_p
         
         slotsum = 0
@@ -54,7 +55,7 @@ def toothflux(theta, nterms, params, Bn):
         
         #Ksl = kfunc(theta, gap, r_s, n_m, tt, ts, mu_r, l_m)
         
-        #fourier transform to obtain coeffificients in Kslm
+        #fourier transform to obtain coefficients in Kslm
         #compute using Riemann sum
         
         Kslm = FourierCoeffsNumpy(kfunc, T, mterms,  gap, r_s, n_m, tt, ts, mu_r, t_mag)
@@ -73,6 +74,7 @@ def toothflux(theta, nterms, params, Bn):
         #
         ###for now, assume radial orientation
         k_rn = RadialR(n, alpha)
+        
         k_tn = RadialT(n, alpha)
         
         k_mc = (k_rn + 1j*beta*k_tn)/(1 - beta**2)
@@ -80,17 +82,20 @@ def toothflux(theta, nterms, params, Bn):
         del_r = (mu_r + 1)*((r_r/r_m)**(2*beta) - (r_s/r_m)**(2*beta)) + (mu_r - 1)*(1 -((r_r/r_m)**(2*beta))*((r_s/r_m)**(2*beta)))
         #print(del_r)
         if n != 0:
-            k_a = (k_mc*k_rn/del_r)*((1-(r_r/r_m)**(2*beta))*((beta + 1)*(r_r/r_m)**(2*beta) - (2*beta)*(r_r/r_m)**(beta+1) + beta - 1))
+            k_a = (k_mc*k_rn/del_r)*((1-(r_r/r_m)**(2*beta))*((beta + 1)*((r_r/r_m)**(2*beta)) - (2*beta)*((r_r/r_m)**(beta+1)) + beta - 1))
         else:
             k_a = 0
         
-        k_a = k_a.real
-        print(n)
+        #print(k_a)
+        #k_a = k_a.real
+        #print(n)
         Bgn[n+nterms] = -b_r*k_a*(((r_s/r_m)**(beta-1)) + ((r_s/r_m)**(2*beta))*((r_m/r_s)**(beta+1)))
-                    
+        Btn = 0
+        #print(slotsum)            
         Bn[n+nterms] = Bgn[n+nterms]*(2*pi*l_st*r_s/n_s)*slotsum/(k_st*l_st*w_tb)
-        print(Bn[n+nterms])
-    return Bn
+        print(Bgn[n+nterms])
+    #print(Bgn)
+    return Bgn, Btn
     
 def kfunc(theta, gap, r_s, n_m, tt, ts, mu_r, t_mag):
     
@@ -148,12 +153,12 @@ def FourierCoeffsNumpy(func, T, N,  gap, r_s, n_m, tt, ts, mu_r, t_mag):
 if __name__ == '__main__':
 
     gap = .001
-    r_s = .07
+    r_s = .051
     n_m = 20
     n_s = 24
     ts = 2*pi/n_s #slot to slot angle 
     tt = .6*pi/10 #tooth width angle
-    mu_r = 1
+    mu_r = 1.05
     t_mag = .003
     l_st = .008
     k_st = 1
@@ -172,7 +177,7 @@ if __name__ == '__main__':
         'l_st':l_st,
         'k_st':k_st,
         'w_tb':w_tb,
-        'rot_or':(r_s-gap)
+        'rot_or':(r_s - gap)
     }
     
     theta = 0#np.linspace(-ts/2,ts/2)
@@ -184,18 +189,19 @@ if __name__ == '__main__':
     # y = FourierCoeffsNumpy(kfunc, T, N, gap, r_s, n_m, tt, ts, mu_r, t_mag)
     
     Bn = np.zeros(2*N + 1)
-
+    Bm = np.zeros(2*N + 1)
     
-    Bn = toothflux(theta, N, params, Bn)
+    Bn, Bm = toothflux(theta, N, params, Bn)
     
     #print(Bn)
     
-    Brn = np.concatenate((Bn[40:], Bn[0:39]))
+    Brn = np.concatenate((Bn[N:], Bn[:N]))
+    #Btn = np.concatenate((Bm[10:], Bm[:10]))
     #print(Brn)
-    
+    #Brn = Bn[N:]
     i = np.fft.ifft(Brn)
     
-    #print(i)
+    print(i)
     
     # print(x)
     # print(y)
