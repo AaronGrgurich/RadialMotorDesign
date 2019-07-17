@@ -22,7 +22,8 @@ def toothflux(theta, nterms, params, Bn):
     tt = params['tt']
     ts = params['ts']
     mu_r = params['mu_r']
-    alpha = 1/30 #magnetic fraction, fraction of rotor circumference occupied by one magnet
+    alpha = params['alpha']
+    #alpha = 18/30 #magnetic fraction, fraction of rotor circumference occupied by one magnet
     
     r_r = r_m - t_mag
     
@@ -74,7 +75,7 @@ def toothflux(theta, nterms, params, Bn):
         #
         ###for now, assume radial orientation
         k_rn = RadialR(n, alpha)
-        
+        #print(k_rn)
         k_tn = RadialT(n, alpha)
         
         k_mc = (k_rn + 1j*beta*k_tn)/(1 - beta**2)
@@ -93,7 +94,7 @@ def toothflux(theta, nterms, params, Bn):
         Btn = 0
         #print(slotsum)            
         Bn[n+nterms] = Bgn[n+nterms]*(2*pi*l_st*r_s/n_s)*slotsum/(k_st*l_st*w_tb)
-        print(Bgn[n+nterms])
+        #print(Bgn[n+nterms])
     #print(Bgn)
     return Bgn, Btn
     
@@ -126,7 +127,7 @@ def gfunc(theta, gap, r_s, n_m, tt, ts):
 def RadialR(n, alpha):
     
     if n%2 != 0:
-        return alpha*(sin(n*alpha*pi/2))/(n*alpha*pi/2)
+        return alpha*sin(n*alpha*pi/2)/(n*alpha*pi/2)
     
     if n%2 == 0:
         return 0
@@ -164,6 +165,7 @@ if __name__ == '__main__':
     k_st = 1
     w_tb = .003
     rot_or = .05
+    alpha = .85
     
     params = {
         'gap':gap,
@@ -177,13 +179,14 @@ if __name__ == '__main__':
         'l_st':l_st,
         'k_st':k_st,
         'w_tb':w_tb,
-        'rot_or':(r_s - gap)
+        'rot_or':(r_s - gap),
+        'alpha':alpha
     }
     
     theta = 0#np.linspace(-ts/2,ts/2)
     
     T = ts
-    N = 40
+    N = 200
     
     # x = kfunc(theta, gap, r_s, n_m, tt, ts, mu_r, t_mag)
     # y = FourierCoeffsNumpy(kfunc, T, N, gap, r_s, n_m, tt, ts, mu_r, t_mag)
@@ -195,13 +198,16 @@ if __name__ == '__main__':
     
     #print(Bn)
     
-    Brn = np.concatenate((Bn[N:], Bn[:N]))
+    #Brn = np.concatenate((Bn[N:], Bn[:N]))
+    Brn = Bn[N:]
     #Btn = np.concatenate((Bm[10:], Bm[:10]))
     #print(Brn)
     #Brn = Bn[N:]
-    i = np.fft.ifft(Brn)
-    
+    i = np.fft.irfft(Brn, N)
+    print(Brn)
     print(i)
+    plt.plot(i)
+    plt.show()
     
     # print(x)
     # print(y)
