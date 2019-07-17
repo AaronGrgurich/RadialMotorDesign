@@ -53,9 +53,9 @@ for n in range(-N, N+1):
     
     #k_a = k_a.real
     #print(n)
-    Bgn = -b_r*k_a*(((r_s/r_m)**(beta-1)) + ((r_s/r_m)**(2*beta))*((r_m/r_s)**(beta+1)))
+    Bgn = -b_r*k_a*(((r_m/r_m)**(beta-1)) + ((r_s/r_m)**(2*beta))*((r_m/r_m)**(beta+1)))
     print(Bgn)
-    i[n+N] = k_a
+    i[n+N] = Bgn
 
 plt.plot(i)
 plt.show()
