@@ -4,6 +4,15 @@ import matplotlib.pyplot as plt
 
 # Da, Em, Dm
 # Ea is precomputed
+def RadSinR(n, alpha):
+    if n == 1 or n == -1:
+        return .5
+    else:
+        return 0
+
+def RadSinT(n, alpha):
+    return 0
+
 def RadialR(n, alpha):
     
     if n%2 != 0:
@@ -15,13 +24,13 @@ def RadialR(n, alpha):
 def RadialT(n, alpha):
     return 0
 
-n_p = 10
+n_p = 8
 r_s = .051
 r_m = .05
 r_r = .045
 b_r = 1.3
 mu_r = 1.05
-mu_0 = 0.001
+mu_0 = 0.001 #value doesn't matter
 alpha = .85
 
 def B_fourier_terms(n):
@@ -38,7 +47,7 @@ def B_fourier_terms(n):
     #Hatheta boundary condition
     # bmat[0, 0] = (r_s**(-beta-1))
     # rhs[0] = -r_s**(beta-1)
-    Ea = -r_s**(2*beta)
+    Ea = -(r_s)**(2*beta)
     
     #Hmtheta boundary condition
     bmat[0, 1] = (r_r**(-beta-1))
@@ -46,7 +55,7 @@ def B_fourier_terms(n):
     rhs[0] = -Cm
     
     #Htheta boundary condition
-    bmat[1, 0] = Ea*(r_m**(-beta-1)) + r_m**(beta - 1)
+    bmat[1, 0] = -Ea*(r_m**(-beta-1)) - r_m**(beta - 1)
     bmat[1, 1] = r_m**(-beta-1) 
     bmat[1, 2] = r_m**(beta-1)
     rhs[1] = -Cm
@@ -68,16 +77,16 @@ def B_fourier_terms(n):
     return x
     
 def B_arn(b_fourier, n, r):
-    Da = b_fourier[0]
+    Da = -b_fourier[0]
     #print(Da)
     beta = n*n_p
-    Ea = -r_s**(2*beta)
+    Ea = -(r_s)**(2*beta)
     b_arn = mu_0*beta*Da*(Ea*(r**(-beta-1)) - r**(beta-1))
     return b_arn
     
 if __name__ == '__main__':
     
-    N = 22
+    N = 17
     B_r = np.zeros(N)
     
     for n in range(1, N):
@@ -86,7 +95,7 @@ if __name__ == '__main__':
         print(B_r[n])
         
     i = np.fft.irfft(B_r)
-    print(i)
-    plt.plot(B_r)
+    #print(i)
+    plt.plot(i)
     plt.show()
         
