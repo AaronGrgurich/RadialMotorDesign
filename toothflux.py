@@ -30,7 +30,7 @@ def toothflux(theta, nterms, params, Bn):
     b_r = 1.3 #magnetic remanence
     
     #nterms = 10 #flux fourier series terms
-    mterms = 100 #slot correction fourier series terms
+    mterms = 20 #slot correction fourier series terms
     
     n_p = n_m/2 #number of pole pairs
     
@@ -45,7 +45,7 @@ def toothflux(theta, nterms, params, Bn):
     
     phi = 0
     #flux term layer
-    for n in range(-nterms, nterms + 1):
+    for n in range(1, nterms):
         beta = n*n_p
         
         slotsum = 0
@@ -69,7 +69,7 @@ def toothflux(theta, nterms, params, Bn):
         
         else:
             slotsum = 0
-
+        print(slotsum)
         #
         # add k_rn and k_tn here based on magnetic field orientation of halbach array
         #
@@ -141,7 +141,7 @@ def FourierCoeffsNumpy(func, T, N,  gap, r_s, n_m, tt, ts, mu_r, t_mag):
     #N: number of terms 1 and onward, this computes N + 1 coefficients
     
     fsample = 2*N 
-    t = np.linspace(-T/2, T/2, fsample + 1, endpoint = False)
+    t = np.linspace(-T/2, T/2, fsample + 2, endpoint = False)
     y = np.fft.rfft(func(t, gap, r_s, n_m, tt, ts, mu_r, t_mag))/fsample
     
     c = y
@@ -155,7 +155,7 @@ if __name__ == '__main__':
 
     gap = .001
     r_s = .051
-    n_m = 20
+    n_m = 16
     n_s = 24
     ts = 2*pi/n_s #slot to slot angle 
     tt = .6*pi/10 #tooth width angle
@@ -186,7 +186,7 @@ if __name__ == '__main__':
     theta = 0#np.linspace(-ts/2,ts/2)
     
     T = ts
-    N = 200
+    N = 18
     
     # x = kfunc(theta, gap, r_s, n_m, tt, ts, mu_r, t_mag)
     # y = FourierCoeffsNumpy(kfunc, T, N, gap, r_s, n_m, tt, ts, mu_r, t_mag)
@@ -204,10 +204,9 @@ if __name__ == '__main__':
     #print(Brn)
     #Brn = Bn[N:]
     i = np.fft.irfft(Brn, N)
-    print(Brn)
-    print(i)
+
     plt.plot(i)
-    plt.show()
+    #plt.show()
     
     # print(x)
     # print(y)

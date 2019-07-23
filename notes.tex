@@ -52,6 +52,10 @@ Need to debug, values explode with higher truncation point
 \sout{Still an issue. Finish re-derivation, give it another shot for a day, then try an FEM approach.}
 Justin helped me solve it by solving the linear system for every $n$. Now check the answer and see what I can do with it.
 
+\sout{Implement slot correction factor. Clean up code.}
+
+Implement core loss equation. Consider options for determining coefficients.
+
 \section{High-Level Notes}
 
 Goal: Make strides in unifying motor design process using OpenMDAO.
@@ -150,5 +154,7 @@ And $B_o={pk}$ is maximum of $B(\theta)$. Check (7.23) and (7,24) for stator too
 But I need to see if the magnetic field is sinusoidal.
 
 Halbach array is said to have sinusoidal magnetic field profile.???
+
+Model appears to suffer from subtractive cancellation due to exponential increase with $n$. Higher frequency terms destroy accuracy. 
 
 \end{document}

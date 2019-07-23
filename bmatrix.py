@@ -24,16 +24,25 @@ def RadialR(n, alpha):
 def RadialT(n, alpha):
     return 0
 
-n_p = 8
-r_s = .051
-r_m = .05
-r_r = .045
-b_r = 1.3
-mu_r = 1.05
+# n_p = 8
+# r_s = .051
+# r_m = .05
+# r_r = .045
+# b_r = 1.3
+# mu_r = 1.05
 mu_0 = 0.001 #value doesn't matter
-alpha = .85
+# alpha = .85
 
-def B_fourier_terms(n):
+
+def B_fourier_terms(n, params):
+    n_p = params['n_p'] #number of pole pairs
+    r_s = params['r_s'] #stator inner radius
+    r_m = params['r_m'] #rotor outer radius (INCLUDING MAGNETS)
+    r_r = params['r_r']
+    b_r = params['b_r']
+    mu_r = params['mu_r']
+    alpha = params['alpha']
+    
     bmat = np.zeros((3, 3))
     rhs = np.zeros(3)
 
@@ -76,7 +85,10 @@ def B_fourier_terms(n):
     x = bmat_inv.dot(rhs)
     return x
     
-def B_arn(b_fourier, n, r):
+def B_arn(b_fourier, n, params, r):
+    r_s = params['r_s']
+    n_p = params['n_p']
+    
     Da = -b_fourier[0]
     #print(Da)
     beta = n*n_p
