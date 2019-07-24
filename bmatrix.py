@@ -1,9 +1,17 @@
+''' 
+Compute the coefficients of the solution to the air gap and magnet region flux density
+
+Also compute the Fourier coefficients specifically for the radial component of the air gap  
+
+Based on Appendix B of 'Brushless Permanent Magnet Motor Design' by Duane P. Hanselman
+'''
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Da, Em, Dm
-# Ea is precomputed
+# Definitions of magnetic field profiles, which determine k_rn and k_tn. Use as appropriate
+
+# Radial Sinusoidal Profile
 def RadSinR(n, alpha):
     if n == 1 or n == -1:
         return .5
@@ -13,6 +21,7 @@ def RadSinR(n, alpha):
 def RadSinT(n, alpha):
     return 0
 
+# Radial Profile
 def RadialR(n, alpha):
     
     if n%2 != 0:
@@ -24,38 +33,35 @@ def RadialR(n, alpha):
 def RadialT(n, alpha):
     return 0
 
-# n_p = 8
-# r_s = .051
-# r_m = .05
-# r_r = .045
-# b_r = 1.3
-# mu_r = 1.05
-mu_0 = 0.001 #value doesn't matter
-# alpha = .85
+
+# Permitivity of Free Space. Cancels out in computation, so the value doesn't matter
+mu_0 = 0.001 
 
 
+# Compute the coefficients of the assumed solution using the boundary conditions
+# Solves a size 3 linear system for every nth Fourier series term
 def B_fourier_terms(n, params):
     n_p = params['n_p'] #number of pole pairs
     r_s = params['r_s'] #stator inner radius
     r_m = params['r_m'] #rotor outer radius (INCLUDING MAGNETS)
-    r_r = params['r_r']
-    b_r = params['b_r']
-    mu_r = params['mu_r']
-    alpha = params['alpha']
+    r_r = params['r_r'] #rotor outer radius
+    b_r = params['b_r'] #magnetic remanence of stator material
+    mu_r = params['mu_r'] #magnetic relative recoil permitivity
+    alpha = params['alpha'] #magnet fraction in rotor
     
     bmat = np.zeros((3, 3))
     rhs = np.zeros(3)
 
     beta = n*n_p
     
+    # magnetic profile coefficients
     k_rn = RadialR(n, alpha)
     k_tn = RadialT(n, alpha)
-    #Cm = b_r*(k_rn + 1j*beta*k_tn)/((1-beta**2)*mu_r*mu_0)
+    
+    # assume output is real, ignore imaginary part (Equation B.18)
     Cm = b_r*(k_rn)/((1-beta**2)*mu_r*mu_0)
     
-    #Hatheta boundary condition
-    # bmat[0, 0] = (r_s**(-beta-1))
-    # rhs[0] = -r_s**(beta-1)
+    #Hatheta boundary condition (excluded from linear system)
     Ea = -(r_s)**(2*beta)
     
     #Hmtheta boundary condition
@@ -75,25 +81,22 @@ def B_fourier_terms(n, params):
     bmat[2, 2] = beta*(r_m**(beta-1))
     rhs[2] = (b_r*k_rn/(mu_r*mu_0)) - Cm 
     
-    #print(bmat)
-    #print(rhs)
-    
+    #invert matrix
     bmat_inv = np.linalg.inv(bmat)
     
-    #print(bmat_inv)
-    
+    #solve system using inverse of system matrix
     x = bmat_inv.dot(rhs)
     return x
     
+# Compute Fourier Coefficients of radial component air gap magnetic flux Density
 def B_arn(b_fourier, n, params, r):
-    r_s = params['r_s']
-    n_p = params['n_p']
+    r_s = params['r_s'] #stator inner radius
+    n_p = params['n_p'] #number of pole pairs
     
     Da = -b_fourier[0]
-    #print(Da)
     beta = n*n_p
     Ea = -(r_s)**(2*beta)
-    b_arn = mu_0*beta*Da*(Ea*(r**(-beta-1)) - r**(beta-1))
+    b_arn = mu_0*beta*Da*(Ea*(r**(-beta-1)) - r**(beta-1)) #Equation B.13
     return b_arn
     
 if __name__ == '__main__':

@@ -1,8 +1,9 @@
 '''
-This function computes magnetic flux in the stator teeth of a motor, described using a Fourier series with respect to angular position theta
+This function computes magnetic flux density in the stator teeth of a motor, described using a Fourier series with respect to angular position theta
 
 Taken from Brushless Permanent Magnet Motor Design, Second Edition by Dr. Duane Hanselman, Chapter 7
 Magnetic Flux Density Coefficient formula taken from Appendix B, pg 349
+
 '''
 
 
@@ -10,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import bmatrix as bm
 import slotcorrection as sl
+import core_loss as cl
 
 def B_tooth(N, M, params):
     n_s = params['n_s'] #number of Slots
@@ -19,9 +21,9 @@ def B_tooth(N, M, params):
     r_s = params['r_s'] #stator inner radius
     t_mag = params['t_mag'] #magnet thickness
     r_m = params['r_m'] #rotor outer radius (INCLUDING MAGNETS)
-    r_r = params['r_r']
-    b_r = params['b_r']
-    tt = params['tt']
+    r_r = params['r_r'] #rotor outer radius
+    b_r = params['b_r'] #magnetic remanence
+    tt = params['tt'] 
     ts = params['ts']
     mu_r = params['mu_r']
     alpha = params['alpha']
@@ -30,24 +32,25 @@ def B_tooth(N, M, params):
     B_gn = np.zeros(N)
     B_tn = np.zeros(N)
 
+    # Compute slot correction factor terms
     K_slm = sl.slot_correction(M, params)
 
     for n in range(1, N):
-    
+        # Compute solution coefficients for a particular n
         b_f = bm.B_fourier_terms(n, params)
+        # Compute radial air gap magnetic flux density nth Fourier Coefficient
         B_gn[n] = bm.B_arn(b_f, n, params, r_s)
+        
         slotsum = 0
-        #From Chapter 7 of Hanselman Book 
+        # Compute characteristic summation of slot correction factor for the nth Fourier Coefficient 
         if n%2 != 0:
             for m in range(-M, M + 1):
                 slotsum += K_slm[m + M]*np.sinc(np.pi*(m + n*(n_m/(2*n_s))))#/(np.pi*(m + n*(n_m/(2*n_s))))
-
         else:
             slotsum = 0
-        #print(slotsum)
-            
-        B_tn[n] = B_gn[n]*(2*np.pi*r_s/(n_s*k_st*w_tb))*slotsum 
-    print(B_gn)    
+        
+        # Modify air gap solution with slot correction    
+        B_tn[n] = B_gn[n]*(2*np.pi*r_s/(n_s*k_st*w_tb))*slotsum    
     return B_tn
     
 if __name__ == '__main__':
@@ -65,6 +68,7 @@ if __name__ == '__main__':
     w_tb = .005
     alpha = .85
     b_r = 1.3
+    f = 5400/20 #rpm
         
     params = {
         'gap':gap,
@@ -82,13 +86,18 @@ if __name__ == '__main__':
         'r_m':(r_s - gap),
         'r_r':(r_s - gap - t_mag),
         'alpha':alpha,
-        'b_r':b_r
+        'b_r':b_r,
+        'f':f
     }
         
     B_tn = B_tooth(17, 20, params)
     
     i = np.fft.irfft(B_tn)
+    
+    L_core = cl.core_loss(i, params)
+    
     print(i)
+    print(L_core)
     plt.plot(i)
     plt.show()
     

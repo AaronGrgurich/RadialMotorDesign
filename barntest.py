@@ -53,7 +53,7 @@ for n in range(-N, N+1):
     
     #k_a = k_a.real
     #print(n)
-    Bgn = -b_r*k_a*(((r_m/r_m)**(beta-1)) + ((r_s/r_m)**(2*beta))*((r_m/r_m)**(beta+1)))
+    Bgn = -b_r*k_a*(((.0505/r_m)**(beta-1)) + ((r_s/r_m)**(2*beta))*((r_m/.0505)**(beta+1)))
     print(Bgn)
     i[n+N] = Bgn
 

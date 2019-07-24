@@ -44,9 +44,9 @@ Ask Dustin about the permanent magnets, and their magnetic remanence
 
 The magnets are (for now) N48H neodymium.
 
-\sout{Very important: Need the magnetization profile of the halbach array to determine  $K_{rn}$, $K_{\theta{}n}$. Will temporarily assume radial orientation.
+\sout{Very important: Need the magnetization profile of the halbach array to determine  $K_{rn}$, $K_{\theta{}n}$. Will temporarily assume radial orientation.}
 
-Very important: Need to compute fourier series of slot correction factor function (piecewise)}
+Very important: Need to compute fourier series of slot correction factor function (piecewise)
 Need to debug, values explode with higher truncation point
 
 \sout{Still an issue. Finish re-derivation, give it another shot for a day, then try an FEM approach.}
@@ -109,6 +109,8 @@ ef18621 2019-07-02: Added this notes.tex file
 
 91029b2 2019-07-02: The surrogate models for magnetic/wiring eddy and core losses work, as do the mechanical loss models. Optimization doesn't make sense as they are.
 
+bb0d8cd 2019-07-23: Computed magnetic flux density in the stator teeth, expandable to yoke.
+
 \section{Specific Notes}
 
 May need to look at magnetic flux density/max flux calculations (assumed constant) See pg. 156 EMF book
@@ -156,5 +158,18 @@ But I need to see if the magnetic field is sinusoidal.
 Halbach array is said to have sinusoidal magnetic field profile.???
 
 Model appears to suffer from subtractive cancellation due to exponential increase with $n$. Higher frequency terms destroy accuracy. 
+
+
+
+Caveats to keep in mind:
+
+Model suffers from subtractive cancellation error for large $\beta$, limiting accuracy of solution. Should not severely impact solution.
+
+Model depends on knowledge of the magnetic field profile. Unsure how to characterize Halbach array, but some options are implemented.
+
+Need to derive material constants for Hiperco 50 so as to fit equation 9.39, then use 9.40 to generally compute loss. Material data sheets may have the data to do this, but otherwise may require experimentation. Current numbers are a guess.
+
+Model currently only computes core losses only within the stator teeth, but we can now quickly extend to other relevant losses.
+
 
 \end{document}
