@@ -58,11 +58,13 @@ Implement core loss equation. Consider options for determining coefficients.
 
 Implement model in OpenMDAO
 
+Finish computing partials for rotor outer radius, gap, alpha, w_tb, tt
+
 \section{High-Level Notes}
 
 Goal: Make strides in unifying motor design process using OpenMDAO.
 
-Ideas/paths for making progress 
+Ideas/paths for making progress
 \begin{itemize}
 	\item Implement the lowest-fidelity analyses possible (existing surrogate models, analytic stuff)
 	\item Focus on improving fidelity of one, two, analyses (EM, Thermal)
@@ -70,7 +72,7 @@ Ideas/paths for making progress
   \item Menial tasks: analytic derivatives, clean up code, split across .py files
 \end{itemize}
 
-1. 
+1.
 Seems to be current focus.
 Going to look through MotorCAD manual to replicate their models with Aaron
 
@@ -91,13 +93,13 @@ Want to try minimizing mass instead, see what optimizer does.
 
 Currently using design space bounds,
 
-Upper limit on current density 
+Upper limit on current density
 
-Lower limit on torque 
+Lower limit on torque
 
 Objective is losses, but don't make sense to use as they are
 
-4. 
+4.
 Do these to pass the time
 
 Especially need to clean up comments, remove deprecated lines
@@ -133,7 +135,7 @@ Hysteresis Losses (Steinmetz Equations):
 P_h = k_hfB_{pk}^n
 \end{equation}
 
-or 
+or
 
 \begin{equation}
 P_h = k_hfB_{pk}^{n+mB_{pk}}
@@ -159,7 +161,7 @@ But I need to see if the magnetic field is sinusoidal.
 
 Halbach array is said to have sinusoidal magnetic field profile.???
 
-Model appears to suffer from subtractive cancellation due to exponential increase with $n$. Higher frequency terms destroy accuracy. 
+Model appears to suffer from subtractive cancellation due to exponential increase with $n$. Higher frequency terms destroy accuracy.
 
 
 

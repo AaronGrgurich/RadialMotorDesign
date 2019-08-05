@@ -23,11 +23,11 @@ def B_tooth(N, M, params):
     r_m = params['r_m'] #rotor outer radius (INCLUDING MAGNETS)
     r_r = params['r_r'] #rotor outer radius
     b_r = params['b_r'] #magnetic remanence
-    tt = params['tt'] 
+    tt = params['tt']
     ts = params['ts']
     mu_r = params['mu_r']
     alpha = params['alpha']
-    
+
     n_m = n_p*2
     B_gn = np.zeros(N)
     B_tn = np.zeros(N)
@@ -40,26 +40,26 @@ def B_tooth(N, M, params):
         b_f = bm.B_fourier_terms(n, params)
         # Compute radial air gap magnetic flux density nth Fourier Coefficient
         B_gn[n] = bm.B_arn(b_f, n, params, r_s)
-        
+
         slotsum = 0
-        # Compute characteristic summation of slot correction factor for the nth Fourier Coefficient 
+        # Compute characteristic summation of slot correction factor for the nth Fourier Coefficient
         if n%2 != 0:
             for m in range(-M, M + 1):
                 slotsum += K_slm[m + M]*np.sinc(np.pi*(m + n*(n_m/(2*n_s))))#/(np.pi*(m + n*(n_m/(2*n_s))))
         else:
             slotsum = 0
-        
-        # Modify air gap solution with slot correction    
-        B_tn[n] = B_gn[n]*(2*np.pi*r_s/(n_s*k_st*w_tb))*slotsum    
+
+        # Modify air gap solution with slot correction
+        B_tn[n] = B_gn[n]*(2*np.pi*r_s/(n_s*k_st*w_tb))*slotsum
     return B_tn
-    
+
 if __name__ == '__main__':
-    
+
     gap = .001
     r_s = .051
     n_p = 8
     n_s = 24
-    ts = 2*np.pi/n_s #slot to slot angle 
+    ts = 2*np.pi/n_s #slot to slot angle
     tt = .6*np.pi/10 #tooth width angle
     mu_r = 1.05
     t_mag = .003
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     alpha = .85
     b_r = 1.3
     f = 5400/20 #rpm
-        
+
     params = {
         'gap':gap,
         'r_s':r_s,
@@ -89,15 +89,14 @@ if __name__ == '__main__':
         'b_r':b_r,
         'f':f
     }
-        
-    B_tn = B_tooth(17, 20, params)
-    
+
+    B_tn = B_tooth(4, 20, params)
+    print(B_tn)
     i = np.fft.irfft(B_tn)
-    
+
     L_core = cl.core_loss(i, params)
-    
-    print(i)
+
+    # print(i)
     print(L_core)
-    plt.plot(i)
-    plt.show()
-    
+    # plt.plot(i)
+    # plt.show()

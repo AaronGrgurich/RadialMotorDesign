@@ -8,6 +8,8 @@ M = 20
 
 B_tna = np.zeros(N)
 
+#need partials for rot_or, sta_ir, t_mag, alpha, w_tb, tt
+
 class DiffAssemble(om.ExplicitComponent):
     def initialize(self):
         self.options.declare('n', default=1., desc='index')
@@ -23,6 +25,15 @@ class DiffAssemble(om.ExplicitComponent):
 
         self.add_output('bmat', shape=(3,3), desc='system matrix')
         self.add_output('rhs', shape=3, desc='right hand side')
+
+        self.declare_partials('bmat','sta_ir')
+        self.declare_partials('bmat','rot_or')
+        self.declare_partials('bmat','t_mag')
+        self.declare_partials('bmat','alpha')
+        self.declare_partials('rhs','sta_ir')
+        self.declare_partials('rhs','rot_or')
+        self.declare_partials('rhs','t_mag')
+        self.declare_partials('rhs','alpha')
 
     def compute(self, inputs, outputs):
         n = self.options['n']
@@ -50,7 +61,7 @@ class DiffAssemble(om.ExplicitComponent):
 
         #Hatheta boundary condition (excluded from linear system)
         Ea = -(r_s)**(2*beta)
-
+        print(r_s)
         #Hmtheta boundary condition
         bmat[0, 1] = (r_r**(-beta-1))
         bmat[0, 2] = (r_r**(beta-1))
@@ -105,9 +116,7 @@ class DiffLinearSolve(om.ExplicitComponent):
         rhs = inputs['rhs']
         print(bmat)
         bmat_inv = np.linalg.inv(bmat)
-
         x = bmat_inv.dot(rhs)
-        print(x)
         outputs['x'] = x
 
     # def solve_linear(self, d_outputs, d_residuals, mode):
@@ -131,6 +140,7 @@ class BarnComp(om.ExplicitComponent):
 
     def compute(self, inputs, outputs):
         x = inputs['x']
+        print(x)
         n = self.options['n']
         r_s = inputs['sta_ir'] #stator inner radius
         n_p = inputs['n_m']/2 #number of pole pairs
@@ -282,6 +292,7 @@ class InvFourier(om.ExplicitComponent):
         self.add_output('B_t', shape=(N-1)*2)
 
     def compute(self, inputs, outputs):
+        print(inputs['B_tn'])
         B_t = np.fft.irfft(inputs['B_tn'])
         outputs['B_t'] = B_t
 
@@ -309,8 +320,8 @@ class MaxMeanSquared(om.ExplicitComponent):
         for t in range(1, Nl):
             B_msq += 2*((t*omega*B_t[t])**2)
 
-        outputs['B_pk']
-        outputs['B_msq']
+        outputs['B_pk'] = B_pk
+        outputs['B_msq'] = B_msq
 
 class CoreLoss(om.ExplicitComponent):
 
@@ -325,7 +336,7 @@ class CoreLoss(om.ExplicitComponent):
         B_pk = inputs['B_pk']
         B_msq = inputs['B_msq']
         f = inputs['f']
-
+        print(B_pk)
         # k_h, k_e, n, m are material constants and need to be fitted to real material data
         n = 2
         m = 0.01
@@ -347,8 +358,8 @@ if __name__ == '__main__':
     ind.add_output('t_mag', val=.003)#, units='m')    # Magnet thickness
     ind.add_output('n_s', val=24)                # Number of Slots
     ind.add_output('n_m', val=16)                # Number of poles
-    ind.add_output('rot_or', val = 0.051)#, units='m')
-    ind.add_output('sta_ir', val = 0.050)#, units='m')
+    ind.add_output('rot_or', val = 0.050)#, units='m')
+    ind.add_output('sta_ir', val = 0.051)#, units='m')
     ind.add_output('f', val = 5400/20)#, units='rpm')
     ind.add_output('b_r', val = 1.3)
     ind.add_output('mu_r', val = 1.05)
@@ -357,8 +368,8 @@ if __name__ == '__main__':
     ind.add_output('w_tb', val = .005)
     ind.add_output('tt', val = .6*np.pi/10)
 
-    model.nonlinear_solver = om.NewtonSolver()
-    model.linear_solver = om.DirectSolver()
+    #model.nonlinear_solver = om.NewtonSolver()
+    #model.linear_solver = om.DirectSolver()
     model.add_subsystem('SCFactor', SCFactor(), promotes_inputs=['n_m', 'k_st', 'w_tb', 'sta_ir', 'rot_or', 't_mag', 'n_s', 'tt', 'mu_r'], promotes_outputs=['K_slm'])
 
     for nl in range(1, N):
@@ -376,4 +387,3 @@ if __name__ == '__main__':
     p.run_model()
 
     print(p.get_val('L_core'))
-    print(p.get_val('InvFourier.B_tn'))
