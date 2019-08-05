@@ -96,6 +96,8 @@ class DiffAssemble(om.ExplicitComponent):
 
         mu_0 = 0.001
 
+        bmat = np.zeros((3,3))
+        rhs = np.zeros(3)
         dbmatdsta = np.zeros((3, 3))
         dbmatdrot = np.zeros((3, 3))
         dbmatdtma = np.zeros((3, 3))
@@ -202,28 +204,29 @@ def RadialRPart(n, alpha):
 def RadialT(n, alpha):
     return 0
 
-class DiffLinearSolve(om.ExplicitComponent):
+# class DiffLinearSolve(om.ImplicitComponent):
+#
+#     def setup(self):
+#         self.add_input('bmat', shape=(3,3), desc='system matrix')
+#         self.add_input('rhs', shape=3, desc='right hand side')
+#
+#         self.add_output('x', shape=3)
+#
+#
+#     def apply_nonlinear(self, inputs, outputs, residuals):
+#         bmat = inputs['bmat']
+#         rhs = inputs['rhs']
+#         x = outputs['x']
+#         print(bmat)
+#
+#         residuals['x'] = np.dot(bmat, x) - rhs
+#
 
-    def setup(self):
-        self.add_input('bmat', shape=(3,3), desc='system matrix')
-        self.add_input('rhs', shape=3, desc='right hand side')
-
-        self.add_output('x', shape=3)
-
-
-    def compute(self, inputs, outputs):
-        bmat = inputs['bmat']
-        rhs = inputs['rhs']
-        print(bmat)
-        bmat_inv = np.linalg.inv(bmat)
-        x = bmat_inv.dot(rhs)
-        outputs['x'] = x
-
-    # def solve_linear(self, d_outputs, d_residuals, mode):
+    # def solve_linear(self, outputs, residuals, mode):
     #     if mode == 'fwd':
-    #         d_outputs['x'] = self.inv_jac * d_residuals['x']
+    #         outputs['x'] = self.inv_jac * residuals['x']
     #     elif mode == 'rev':
-    #         d_residuals['x'] = self.inv_jac * d_outputs['x']
+    #         residuals['x'] = self.inv_jac * outputs['x']
 
 
 
@@ -402,6 +405,14 @@ class CorrectSlot(om.ExplicitComponent):
 
         dssdksl = np.zeros(2*M + 1)
 
+        slotsum = 0
+        # Compute characteristic summation of slot correction factor for the nth Fourier Coefficient
+        if n%2 != 0:
+            for m in range(-M, M + 1):
+                slotsum += K_slm[m + M]*np.sinc(np.pi*(m + n*(n_m/(2*n_s))))#/(np.pi*(m + n*(n_m/(2*n_s))))
+        else:
+            slotsum = 0
+
         if n%2 != 0:
             for m in range(-M, M + 1):
                 dssdksl[m + M] = np.sinc(np.pi*(m + n*(n_m/(2*n_s))))#/(np.pi*(m + n*(n_m/(2*n_s))))
@@ -424,11 +435,20 @@ class MotorAirFourierComp(om.Group):
 
     def setup(self):
         ng = self.options['ng']
-        self.add_subsystem('DiffAssemble', DiffAssemble(n = ng), promotes_inputs=['n_m','sta_ir','rot_or','t_mag','b_r','mu_r','alpha'], promotes_outputs=['bmat','rhs'])
-        self.add_subsystem('DiffLinearSolve', DiffLinearSolve(), promotes_inputs=['bmat','rhs'], promotes_outputs=['x'])
-        self.add_subsystem('BarnComp', BarnComp(n = ng), promotes_inputs=['x','sta_ir','n_m'], promotes_outputs=['B_arn'])
+        self.add_subsystem('DiffAssemble', DiffAssemble(n = ng), promotes_inputs=['n_m','sta_ir','rot_or','t_mag','b_r','mu_r','alpha'])
+
+        lingrp = self.add_subsystem('lingrp', om.Group(), promotes=['*'])
+        lingrp.add_subsystem('DiffLinearSolve', om.LinearSystemComp(size=3))
+        self.connect('DiffAssemble.bmat', 'DiffLinearSolve.A')
+        self.connect('DiffAssemble.rhs', 'DiffLinearSolve.b')
+
+
+        self.add_subsystem('BarnComp', BarnComp(n = ng), promotes_inputs=['sta_ir','n_m'], promotes_outputs=['B_arn'])
+        self.connect('DiffLinearSolve.x','BarnComp.x')
+
         self.add_subsystem('CorrectSlot', CorrectSlot(n = ng), promotes_inputs=['K_slm','B_arn','n_m','n_s','sta_ir', 'k_st', 'w_tb'], promotes_outputs=['B_tn'])
 
+        #self.linear_solver = om.DirectSolver()
 
 class InvFourier(om.ExplicitComponent):
 
@@ -549,6 +569,8 @@ if __name__ == '__main__':
     ind.add_output('tt', val = .6*np.pi/10)
 
     #model.nonlinear_solver = om.NewtonSolver()
+    #model.nonlinear_solver.options['solve_subsystems'] = True
+
     #model.linear_solver = om.DirectSolver()
     model.add_subsystem('SCFactor', SCFactor(), promotes_inputs=['n_m', 'k_st', 'w_tb', 'sta_ir', 'rot_or', 't_mag', 'n_s', 'tt', 'mu_r'], promotes_outputs=['K_slm'])
 
