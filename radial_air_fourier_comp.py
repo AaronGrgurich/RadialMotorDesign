@@ -261,7 +261,7 @@ class BarnComp(om.ExplicitComponent):
         mu_0 = 0.001
 
         Da = -x[0]
-        dDadx = [-1 0 0]
+        dDadx = [-1, 0, 0]
         beta = n*n_p
         Ea = -(r_s)**(2*beta)
         dEadsta = -(2*beta)*(r_s**(2*beta-1))
@@ -391,7 +391,32 @@ class CorrectSlot(om.ExplicitComponent):
         outputs['B_tn'] = B_tna
 
     def compute_partials(self, inputs, J):
-        i = 1
+        n = self.options['n']
+        K_slm = inputs['K_slm']
+        B_arn = inputs['B_arn']
+        n_m = inputs['n_m'] #number of pole pairs
+        n_s = inputs['n_s']
+        r_s = inputs['sta_ir']
+        k_st = inputs['k_st']
+        w_tb = inputs['w_tb']
+
+        dssdksl = np.zeros(2*M + 1)
+
+        if n%2 != 0:
+            for m in range(-M, M + 1):
+                dssdksl[m + M] = np.sinc(np.pi*(m + n*(n_m/(2*n_s))))#/(np.pi*(m + n*(n_m/(2*n_s))))
+        else:
+            dssdksl = 0
+
+        dBtndBarn = (2*np.pi*r_s/(n_s*k_st*w_tb))*slotsum
+        dBtndksl = B_arn*(2*np.pi*r_s/(n_s*k_st*w_tb))*dssdksl
+        dBtndsta = B_arn*(2*np.pi/(n_s*k_st*w_tb))*slotsum
+        dBtndwtb = -B_arn*(2*np.pi*r_s/(n_s*k_st*(w_tb**2)))*slotsum
+
+        J['B_tn','K_slm'] = dBtndBarn
+        J['B_tn','B_arn'] = dBtndksl
+        J['B_tn','sta_ir'] = dBtndsta
+        J['B_tn','w_tb'] = dBtndwtb
 
 class MotorAirFourierComp(om.Group):
     def initialize(self):
