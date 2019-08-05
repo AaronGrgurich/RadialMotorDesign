@@ -81,6 +81,98 @@ class DiffAssemble(om.ExplicitComponent):
         outputs['bmat'] = bmat
         outputs['rhs'] = rhs
 
+    def compute_partials(self, inputs, J):
+        n = self.options['n']
+        n_p = inputs['n_m']/2 #number of pole pairs
+        r_s = inputs['sta_ir'] #stator inner radius
+        r_m = inputs['rot_or'] #rotor outer radius (INCLUDING MAGNETS)
+        r_r = r_m - inputs['t_mag'] #rotor outer radius
+        b_r = inputs['b_r'] #magnetic remanence of stator material
+        mu_r = inputs['mu_r'] #magnetic relative recoil permitivity
+        alpha = inputs['alpha'] #magnet fraction in rotor
+
+        drrdrot = 1
+        drrdtma = -1
+
+        mu_0 = 0.001
+
+        dbmatdsta = np.zeros((3, 3))
+        dbmatdrot = np.zeros((3, 3))
+        dbmatdtma = np.zeros((3, 3))
+        dbmatdalp = np.zeros((3, 3))
+        drhsdsta = np.zeros(3)
+        drhsdrot = np.zeros(3)
+        drhsdtma = np.zeros(3)
+        drhsdalp = np.zeros(3)
+
+        beta = n*n_p
+
+        # magnetic profile coefficients
+        k_rn = RadialR(n, alpha)
+        dkrndalp = RadialRPart(n, alpha)
+
+        k_tn = RadialT(n, alpha)
+        dktndalp = 0
+
+        # assume output is real, ignore imaginary part (Equation B.18)
+        Cm = b_r*(k_rn)/((1-beta**2)*mu_r*mu_0)
+        dCmdkrn = b_r/((1-beta**2)*mu_r*mu_0)
+
+        #Hatheta boundary condition (excluded from linear system)
+        Ea = -(r_s)**(2*beta)
+        dEadsta = -(2*beta)*(r_s**(2*beta-1))
+
+        #Hmtheta boundary condition
+        bmat[0, 1] = (r_r**(-beta-1))
+        dbmatdrot[0, 1] = (-beta-1)*(r_r**(-beta-2))*drrdrot
+        dbmatdtma[0, 1] = (-beta-1)*(r_r**(-beta-2))*drrdtma
+
+        bmat[0, 2] = (r_r**(beta-1))
+        dbmatdrot[0, 2] = (beta-1)*(r_r**(beta-2))*drrdrot
+        dbmatdtma[0, 2] = (beta-1)*(r_r**(beta-2))*drrdtma
+
+        rhs[0] = -Cm
+        drhsdalp[0] = -1*dCmdkrn*dkrndalp
+
+        #Htheta boundary condition
+        bmat[1, 0] = -Ea*(r_m**(-beta-1)) - r_m**(beta - 1)
+        dbmatdrot[1, 0] = -Ea*(-beta-1)*(r_m**(-beta-2)) - (beta - 1)*(r_m**(beta - 2))
+        dbmatdsta[1, 0] = -(r_m**(-beta-1))*dEadsta
+
+        bmat[1, 1] = r_m**(-beta-1)
+        dbmatdrot[1, 1] = (-beta-1)*(r_m**(-beta-2))
+
+        bmat[1, 2] = r_m**(beta-1)
+        dbmatdrot[1, 2] = (beta-1)*(r_m**(beta-2))
+
+        rhs[1] = -Cm
+        drhsdalp[1] = -1*dCmdkrn*dkrndalp
+
+        #Hr boundary condition
+        bmat[2, 0] = (beta/mu_r)*(Ea*(r_m**(-beta-1)) - r_m**(beta - 1))
+        dbmatdrot[2, 0] = (beta/mu_r)*(Ea*(-beta-1)*(r_m**(-beta-2)) - (beta - 1)*(r_m**(beta - 2)))
+        dbmatdsta[2, 0] = (beta/mu_r)*(r_m**(-beta-1))*dEadsta
+
+        bmat[2, 1] = -beta*(r_m**(-beta-1))
+        dbmatdrot[2, 1] = -beta*(-beta-1)*(r_m**(-beta-2))
+
+        bmat[2, 2] = beta*(r_m**(beta-1))
+        dbmatdrot[2, 2] = beta*(beta-1)*(r_m**(beta-2))
+
+
+        rhs[2] = (b_r*k_rn/(mu_r*mu_0)) - Cm
+        drhsdalp[2] = (b_r/(mu_r*mu_0))*dkrndalp - 1*dCmdkrn*dkrndalp
+
+        J['bmat','sta_ir'] = dbmatdsta
+        J['bmat','rot_or'] = dbmatdrot
+        J['bmat','t_mag'] = dbmatdtma
+        J['bmat','alpha'] = dbmatdalp
+        J['rhs','sta_ir'] = drhsdsta
+        J['rhs','rot_or'] = drhsdrot
+        J['rhs','t_mag'] = drhsdtma
+        J['rhs','alpha'] = drhsdalp
+
+
 def RadSinR(n, alpha):
     if n == 1 or n == -1:
         return .5
@@ -95,6 +187,14 @@ def RadialR(n, alpha):
 
     if n%2 != 0:
         return alpha*np.sin(n*alpha*np.pi/2)/(n*alpha*np.pi/2)
+
+    if n%2 == 0:
+        return 0
+
+def RadialRPart(n, alpha):
+
+    if n%2 != 0:
+        return n*(np.pi/2)*np.cos(n*alpha*np.pi/2)/(n*np.pi/2)
 
     if n%2 == 0:
         return 0
@@ -138,9 +238,10 @@ class BarnComp(om.ExplicitComponent):
 
         self.add_output('B_arn')
 
+        self.declare_partials('B_arn','x')
+        self.declare_partials('B_arn','sta_ir')
     def compute(self, inputs, outputs):
         x = inputs['x']
-        print(x)
         n = self.options['n']
         r_s = inputs['sta_ir'] #stator inner radius
         n_p = inputs['n_m']/2 #number of pole pairs
@@ -152,8 +253,23 @@ class BarnComp(om.ExplicitComponent):
         b_arn = mu_0*beta*Da*(Ea*(r_s**(-beta-1)) - r_s**(beta-1)) #Equation B.13
         outputs['B_arn'] = b_arn
 
-    # def compute_partials(self, inputs, outputs):
-    #     i = 1
+    def compute_partials(self, inputs, J):
+        x = inputs['x']
+        n = self.options['n']
+        r_s = inputs['sta_ir'] #stator inner radius
+        n_p = inputs['n_m']/2 #number of pole pairs
+        mu_0 = 0.001
+
+        Da = -x[0]
+        dDadx = [-1 0 0]
+        beta = n*n_p
+        Ea = -(r_s)**(2*beta)
+        dEadsta = -(2*beta)*(r_s**(2*beta-1))
+
+        b_arn = mu_0*beta*Da*(Ea*(r_s**(-beta-1)) - r_s**(beta-1)) #Equation B.13
+
+        J['B_arn','x'] = mu_0*beta*(Ea*(r_s**(-beta-1)))*dDadx
+        J['B_arn','sta_ir'] = mu_0*beta*Da*((r_s**(-beta-1))*dEadsta + Ea*(-beta-1)*(r_s**(-beta-2)) - (beta - 1)*(r_s**(beta-2)))
 
 class SCFactor(om.ExplicitComponent):
 
@@ -245,6 +361,11 @@ class CorrectSlot(om.ExplicitComponent):
 
         self.add_output('B_tn', shape=N, desc='corrected B_arn terms')
 
+        self.declare_partials('B_tn','K_slm')
+        self.declare_partials('B_tn','B_arn')
+        self.declare_partials('B_tn','sta_ir')
+        self.declare_partials('B_tn','w_tb')
+
     def compute(self, inputs, outputs):
         n = self.options['n']
         K_slm = inputs['K_slm']
@@ -269,8 +390,8 @@ class CorrectSlot(om.ExplicitComponent):
         B_tna[n] = B_tn
         outputs['B_tn'] = B_tna
 
-    # def compute_partials(self, inputs, outputs):
-    #     i = 1
+    def compute_partials(self, inputs, J):
+        i = 1
 
 class MotorAirFourierComp(om.Group):
     def initialize(self):
@@ -291,6 +412,7 @@ class InvFourier(om.ExplicitComponent):
 
         self.add_output('B_t', shape=(N-1)*2)
 
+        self.declare_partials('B_t','B_tn', method='fd')
     def compute(self, inputs, outputs):
         print(inputs['B_tn'])
         B_t = np.fft.irfft(inputs['B_tn'])
@@ -304,6 +426,9 @@ class MaxMeanSquared(om.ExplicitComponent):
 
         self.add_output('B_pk')
         self.add_output('B_msq')
+
+        self.declare_partials('B_pk','B_t')
+        self.declare_partials('B_msq','B_t')
 
     def compute(self, inputs, outputs):
         B_t = inputs['B_t']
@@ -323,6 +448,22 @@ class MaxMeanSquared(om.ExplicitComponent):
         outputs['B_pk'] = B_pk
         outputs['B_msq'] = B_msq
 
+    def compute_partials(self, inputs, outputs):
+        B_t = inputs['B_t']
+        f = inputs['f']
+
+        omega = f*(2*np.pi/60)
+
+        dBpkdBt = np.zeros(len(B_t))
+        dBpkdBt[B_t.index(max(B_t))] = 1
+
+        dBmsqdBt = np.zeros(len(B_t))
+        for t in range(1, Nl):
+            dBmsqdBt[t] = 4*(((t*omega)**2)*B_t[t])
+
+        J['B_pk', 'B_t'] = dBpkdBt
+        J['B_msq', 'B_t'] = dBmsqdBt
+
 class CoreLoss(om.ExplicitComponent):
 
     def setup(self):
@@ -332,11 +473,13 @@ class CoreLoss(om.ExplicitComponent):
 
         self.add_output('L_core')
 
+        self.declare_partials('L_core', 'B_pk')
+        self.declare_partials('L_core', 'B_msq')
+
     def compute(self, inputs, outputs):
         B_pk = inputs['B_pk']
         B_msq = inputs['B_msq']
         f = inputs['f']
-        print(B_pk)
         # k_h, k_e, n, m are material constants and need to be fitted to real material data
         n = 2
         m = 0.01
@@ -348,6 +491,18 @@ class CoreLoss(om.ExplicitComponent):
 
         outputs['L_core'] = L_core
 
+    def compute_partials(self, inputs, J):
+        B_pk = inputs['B_pk']
+        B_msq = inputs['B_msq']
+        f = inputs['f']
+
+        n = 2
+        m = 0.01
+        k_h = 0.5
+        k_e = 0.5
+
+        J['L_core', 'B_msq'] = k_e/(2*(np.pi**2))
+        J['L_core', 'B_pk'] = k_h*f*(B_pk**(n + m*B_pk))*(m*np.ln(B_pk) + (n + m*B_pk)/B_pk)
 
 if __name__ == '__main__':
     p = om.Problem()
